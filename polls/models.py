@@ -22,3 +22,6 @@ class Vote(models.Model):
     user = models.ForeignKey(User)
     poll = models.ForeignKey(Poll)
     choice = models.ForeignKey(Choice)
+
+    class Meta:
+        unique_together = (('user', 'poll'))
