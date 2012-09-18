@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% load i18n %}
+
+{% block content %}
+{% if poll_list %}
+<ul>
+    {% for poll in poll_list.all %}
+    <li>{{poll.question}}</li>
+    {% endfor %}
+</ul>
+{% else %}
+{% trans "There are no polls available." %}
+{% endif %}
+{% endblock %}
