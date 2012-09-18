@@ -7,6 +7,7 @@ class ChoiceInline(admin.TabularInline):
     model = Choice
     extra = 1
 
+
 class PollAdmin(admin.ModelAdmin):
     inlines = (ChoiceInline,)
 
