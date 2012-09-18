@@ -1,4 +1,5 @@
 from django.db import models
+from django.contrib.auth.models import User
 
 
 class Poll(models.Model):
@@ -13,3 +14,8 @@ class Choice(models.Model):
 
     def __unicode__(self):
         return self.choice
+
+class Vote(models.Model):
+    user = models.ForeignKey(User)
+    poll = models.ForeignKey(Poll)
+    choice = models.ForeignKey(Choice)
