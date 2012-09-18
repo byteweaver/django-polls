@@ -6,7 +6,7 @@
 {% if poll_list %}
 <ul>
     {% for poll in poll_list.all %}
-    <li>{{poll.question}}</li>
+    <li><a href="{% url polls:detail poll.id %}">{{poll.question}}</a></li>
     {% endfor %}
 </ul>
 {% else %}
