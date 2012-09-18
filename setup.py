@@ -1,13 +1,15 @@
 import os
 from setuptools import setup, find_packages
 
+import polls
+
 
 def read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
 setup(
     name='django-polls',
-    version='0.0.1',
+    version=polls.__version__,
     description='A simple polls app for django',
     long_description=read('README.md'),
     license=read('LICENSE'),
