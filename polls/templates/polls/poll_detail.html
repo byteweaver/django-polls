@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% load i18n %}
+
+{% block content %}
+{{poll.question}}
+<form method="post" action="#">
+    {% csrf_token %}
+    <ul class="unstyled">
+        {% for choice in poll.choice_set.all %}
+        <li><input type="radio" name="poll_{{poll_id}}" value="{{choice.id}}">{{choice.choice}}</li>
+        {% endfor %}
+    </ul>
+    <input class="btn btn-primary" type="submit" value="{% trans "Vote" %}">
+</form>
+{% endblock %}
