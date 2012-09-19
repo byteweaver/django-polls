@@ -6,6 +6,15 @@ class Poll(models.Model):
     question = models.CharField(max_length=255)
     description = models.TextField(blank=True)
 
+    def count_choices(self):
+        return self.choice_set.count()
+
+    def count_total_votes(self):
+        result = 0
+        for choice in self.choice_set.all():
+            result += choice.count_votes()
+        return result
+
     def __unicode__(self):
         return self.question
 
