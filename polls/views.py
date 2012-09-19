@@ -1,4 +1,4 @@
-from django.views.generic import DetailView, ListView
+from django.views.generic import DetailView, ListView, RedirectView
 
 from models import Poll
 
@@ -14,3 +14,7 @@ class PollDetailView(DetailView):
         context = super(PollDetailView, self).get_context_data(**kwargs)
         context['poll'].votable = self.object.can_vote(self.request.user)
         return context
+
+
+class PollVoteView(RedirectView):
+    pass
