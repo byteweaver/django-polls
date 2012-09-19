@@ -1,4 +1,5 @@
 from django.views.generic import DetailView, ListView, RedirectView
+from django.core.urlresolvers import reverse_lazy
 
 from models import Poll
 
@@ -17,4 +18,5 @@ class PollDetailView(DetailView):
 
 
 class PollVoteView(RedirectView):
-    pass
+    def get_redirect_url(self, **kwargs):
+        return reverse_lazy('polls:detail', args=[kwargs['pk']])
