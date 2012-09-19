@@ -3,6 +3,7 @@
 {% load i18n %}
 
 {% block content %}
+<h1>{% trans "Polls" %}</h1>
 {% if poll_list %}
 <ul>
     {% for poll in poll_list.all %}
