@@ -9,3 +9,8 @@ class PollListView(ListView):
 
 class PollDetailView(DetailView):
     model = Poll
+
+    def get_context_data(self, **kwargs):
+        context = super(PollDetailView, self).get_context_data(**kwargs)
+        context['poll'].votable = self.object.can_vote(self.request.user)
+        return context
