@@ -15,6 +15,9 @@ class Poll(models.Model):
             result += choice.count_votes()
         return result
 
+    def can_vote(self, user):
+        return not self.vote_set.filter(user=user).exists()
+
     def __unicode__(self):
         return self.question
 
