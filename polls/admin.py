@@ -9,6 +9,8 @@ class ChoiceInline(admin.TabularInline):
 
 
 class PollAdmin(admin.ModelAdmin):
+    model = Poll
     inlines = (ChoiceInline,)
+    list_display = ('question', 'count_choices', 'count_total_votes')
 
 admin.site.register(Poll, PollAdmin)
