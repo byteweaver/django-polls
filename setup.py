@@ -12,7 +12,7 @@ setup(
     version=polls.__version__,
     description='A simple polls app for django',
     long_description=read('README.md'),
-    license=read('LICENSE'),
+    license='MIT License',
     author='noxan',
     author_email='contact@byteweaver.net',
     url='https://github.com/byteweaver/django-polls',
