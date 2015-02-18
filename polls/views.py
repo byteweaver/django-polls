@@ -2,7 +2,7 @@ from django.views.generic import DetailView, ListView, RedirectView
 from django.core.urlresolvers import reverse_lazy
 from django.contrib import messages
 from django.utils.translation import ugettext_lazy as _
-
+from django.core.exceptions import PermissionDenied
 from models import Choice, Poll, Vote
 
 
@@ -15,7 +15,10 @@ class PollDetailView(DetailView):
 
     def get_context_data(self, **kwargs):
         context = super(PollDetailView, self).get_context_data(**kwargs)
-        context['poll'].votable = self.object.can_vote(self.request.user)
+        if self.request.user.is_anonymous():
+            context['poll'].votable = False
+        else:
+            context['poll'].votable = self.object.can_vote(self.request.user)
         return context
 
 
@@ -24,6 +27,9 @@ class PollVoteView(RedirectView):
         poll = Poll.objects.get(id=kwargs['pk'])
         user = request.user
         choice = Choice.objects.get(id=request.POST['choice_pk'])
+        # if already voted, prevent IntegrityError
+        if Vote.objects.filter(poll=poll, user=user).exists():
+            raise PermissionDenied
         Vote.objects.create(poll=poll, user=user, choice=choice)
         messages.success(request, _("Thanks for your vote."))
         return super(PollVoteView, self).post(request, *args, **kwargs)
