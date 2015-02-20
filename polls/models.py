@@ -51,7 +51,7 @@ class Choice(models.Model):
 
 
 class Vote(models.Model):
-    user = models.ForeignKey(User)
+    user = models.ForeignKey(User, blank=True, null=True)
     poll = models.ForeignKey(Poll)
     choice = models.ForeignKey(Choice)
     comment = models.TextField(max_length=144, blank=True, null=True)
@@ -60,6 +60,3 @@ class Vote(models.Model):
 
     def __unicode__(self):
         return u'Vote for %s' % self.choice
-
-    class Meta:
-        unique_together = ('user', 'poll')
