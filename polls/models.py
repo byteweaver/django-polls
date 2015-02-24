@@ -1,6 +1,6 @@
+from uuid import uuid4
 from datetime import datetime, timedelta
 from django.db import models
-from django_extensions.db.fields import UUIDField
 from django_extensions.db.fields.json import JSONField
 from django.contrib.auth.models import User
 from django.utils.translation import ugettext_lazy as _
@@ -10,7 +10,7 @@ from exceptions import PollClosed, PollNotOpen, PollNotAnonymous, PollNotMultipl
 class Poll(models.Model):
     question = models.CharField(max_length=255)
     description = models.TextField(blank=True)
-    reference = UUIDField(max_length=20, version=4)
+    reference = models.CharField(max_length=20, default=uuid4)
     is_anonymous = models.BooleanField(default=False, help_text=_('Allow to vote for anonymous user'))
     is_multiple = models.BooleanField(default=False, help_text=_('Allow to make multiple choices'))
     is_closed = models.BooleanField(default=False, help_text=_('Do not accept votes'))
@@ -19,9 +19,10 @@ class Poll(models.Model):
                                      help_text=_('The latest time votes get accepted'))
 
     def vote(self, choices, user=None):
+        current_time = datetime.now()
         if self.is_closed:
             raise PollClosed
-        if self.end_votes < datetime.now():
+        if current_time < self.start_votes and current_time > self.end_votes:
             raise PollNotOpen
         if user is None and not self.is_anonymous:
             raise PollNotAnonymous
