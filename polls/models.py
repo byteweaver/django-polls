@@ -75,7 +75,7 @@ class Vote(models.Model):
     poll = models.ForeignKey(Poll)
     choice = models.ForeignKey(Choice)
     comment = models.TextField(max_length=144, blank=True, null=True)
-    datetime = models.DateTimeField(auto_now_add=True)
+    created = models.DateTimeField(auto_now_add=True)
     data = JSONField(blank=True, null=True)
 
     def __unicode__(self):
