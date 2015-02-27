@@ -10,7 +10,7 @@ from exceptions import PollClosed, PollNotOpen, PollNotAnonymous, PollNotMultipl
 class Poll(models.Model):
     question = models.CharField(max_length=255)
     description = models.TextField(blank=True)
-    reference = models.CharField(max_length=20, default=uuid4)
+    reference = models.CharField(max_length=36, default=uuid4, unique=True)
     is_anonymous = models.BooleanField(default=False, help_text=_('Allow to vote for anonymous user'))
     is_multiple = models.BooleanField(default=False, help_text=_('Allow to make multiple choices'))
     is_closed = models.BooleanField(default=False, help_text=_('Do not accept votes'))

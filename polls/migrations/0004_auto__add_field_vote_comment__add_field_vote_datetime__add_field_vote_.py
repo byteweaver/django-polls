@@ -30,8 +30,9 @@ class Migration(SchemaMigration):
 
         # Adding field 'Poll.reference'
         db.add_column(u'polls_poll', 'reference',
-                      self.gf('django.db.models.fields.CharField')(default='', max_length=20, blank=True),
+                      self.gf('django.db.models.fields.CharField')(default='', max_length=36, blank=True, unique=True),
                       keep_default=False)
+        db.create_unique(u'polls_poll', ['reference'])
 
         # Adding field 'Poll.is_multiple'
         db.add_column(u'polls_poll', 'is_multiple',
@@ -69,6 +70,7 @@ class Migration(SchemaMigration):
 
         # Deleting field 'Poll.reference'
         db.delete_column(u'polls_poll', 'reference')
+        db.delete_unique(u'polls_poll', ['reference'])
 
         # Deleting field 'Poll.is_multiple'
         db.delete_column(u'polls_poll', 'is_multiple')
@@ -135,7 +137,7 @@ class Migration(SchemaMigration):
             'is_anonymous': ('django.db.models.fields.BooleanField', [], {'default': 'False'}),
             'is_multiple': ('django.db.models.fields.BooleanField', [], {'default': 'False'}),
             'question': ('django.db.models.fields.CharField', [], {'max_length': '255'}),
-            'reference': ('django.db.models.fields.CharField', [], {'max_length': '20', 'blank': 'True'}),
+            'reference': ('django.db.models.fields.CharField', [], {'max_length': '36', 'blank': 'True', 'unique': 'True'}),
             'start_votes': ('django.db.models.fields.DateTimeField', [], {'default': 'datetime.datetime(2015, 2, 19, 0, 0)'})
         },
         u'polls.vote': {
