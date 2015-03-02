@@ -1,8 +1,9 @@
 from django.contrib.auth import get_user_model
+from django.forms.models import model_to_dict
 from tastypie import fields
 from tastypie.authorization import DjangoAuthorization
 from tastypie.authentication import BasicAuthentication
-from tastypie.resources import ModelResource, ALL, ALL_WITH_RELATIONS
+from tastypie.resources import ModelResource, Resource, ALL, ALL_WITH_RELATIONS
 from polls.models import Poll, Choice, Vote
 
 
@@ -23,6 +24,7 @@ class UserResource(ModelResource):
         queryset = get_user_model().objects.all()
         allowed_methods = ['get']
         resource_name = 'user'
+        always_return_data = True
         authentication = BasicAuthentication()
         authorization = DjangoAuthorization()
         excludes = ['date_joined', 'password', 'is_superuser', 'is_staff', 'is_active', 'last_login', 'first_name', 'last_name']
@@ -34,11 +36,16 @@ class UserResource(ModelResource):
 class PollResource(ModelResource):
     # POST, GET, PUT
     #user = fields.ForeignKey(UserResource, 'user')
+    def dehydrate(self, bundle):
+        choices = Choice.objects.filter(poll=bundle.data['id'])
+        bundle.data['choices']  = [model_to_dict(choice) for choice in choices]
+        return bundle
 
     class Meta:
         queryset = Poll.objects.all()
         allowed_methods = ['get','post','put']
         resource_name = 'poll'
+        always_return_data = True
         authentication = BasicAuthentication()
         authorization = DjangoAuthorization()
         filtering = {
@@ -54,6 +61,7 @@ class ChoiceResource(ModelResource):
         authentication = BasicAuthentication()
         authorization = DjangoAuthorization()
         resource_name = 'choice'
+        always_return_data = True
 
 
 class VoteResource(ModelResource):
@@ -63,11 +71,22 @@ class VoteResource(ModelResource):
         authentication = BasicAuthentication()
         authorization = DjangoAuthorization()
         resource_name = 'vote'
+        always_return_data = True
 
 
 class ResultResource(ModelResource):
+    def dehydrate(self, bundle):
+        percentage = Poll.objects.get(pk=bundle.data['id']).count_percentage()
+        labels = [choice.choice for choice in Choice.objects.filter(poll=bundle.data['id'])]
+        bundle.data['stats'] = dict(values=percentage, labels=labels, votes=len(labels))
+        return bundle
+
     class Meta:
+        queryset = Poll.objects.all()
         allowed_methods = ['get']
         authentication = BasicAuthentication()
         authorization = DjangoAuthorization()
         resource_name = 'result'
+        always_return_data = True
+        excludes = ['description', 'start_votes', 'end_votes', 'is_anonymous', 'is_multiple', 'is_closed', 'reference']
+
