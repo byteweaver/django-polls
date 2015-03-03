@@ -2,7 +2,7 @@ from django.contrib.auth import get_user_model
 from django.forms.models import model_to_dict
 from tastypie import fields
 from tastypie.authorization import DjangoAuthorization
-from tastypie.authentication import BasicAuthentication
+from tastypie.authentication import SessionAuthentication
 from tastypie.resources import ModelResource, Resource, ALL, ALL_WITH_RELATIONS
 from polls.models import Poll, Choice, Vote
 
@@ -25,7 +25,7 @@ class UserResource(ModelResource):
         allowed_methods = ['get']
         resource_name = 'user'
         always_return_data = True
-        authentication = BasicAuthentication()
+        authentication = SessionAuthentication()
         authorization = DjangoAuthorization()
         excludes = ['date_joined', 'password', 'is_superuser', 'is_staff', 'is_active', 'last_login', 'first_name', 'last_name']
         filtering = {
@@ -46,29 +46,33 @@ class PollResource(ModelResource):
         allowed_methods = ['get','post','put']
         resource_name = 'poll'
         always_return_data = True
-        authentication = BasicAuthentication()
+        authentication = SessionAuthentication()
         authorization = DjangoAuthorization()
-        filtering = {
-            'user': ALL_WITH_RELATIONS,
-            'pub_date': ['exact', 'lt', 'lte', 'gte', 'gt'],
-        }
 
 
 class ChoiceResource(ModelResource):
+    poll = fields.ToOneField(PollResource, 'poll')
     class Meta:
         queryset = Choice.objects.all()
         allowed_methods = ['post','put']
-        authentication = BasicAuthentication()
+        authentication = SessionAuthentication()
         authorization = DjangoAuthorization()
         resource_name = 'choice'
         always_return_data = True
 
 
 class VoteResource(ModelResource):
+    user = fields.ToOneField(UserResource, 'user')
+    choice = fields.ToOneField(ChoiceResource, 'choice')
+    poll = fields.ToOneField(PollResource, 'poll')
+
+    def obj_create(self, bundle, **kwargs):
+        return super(VoteResource, self).obj_create(bundle, user=bundle.request.user)
+
     class Meta:
         queryset = Vote.objects.all()
         allowed_methods = ['post']
-        authentication = BasicAuthentication()
+        authentication = SessionAuthentication()
         authorization = DjangoAuthorization()
         resource_name = 'vote'
         always_return_data = True
@@ -84,7 +88,7 @@ class ResultResource(ModelResource):
     class Meta:
         queryset = Poll.objects.all()
         allowed_methods = ['get']
-        authentication = BasicAuthentication()
+        authentication = SessionAuthentication()
         authorization = DjangoAuthorization()
         resource_name = 'result'
         always_return_data = True
