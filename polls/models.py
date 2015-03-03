@@ -81,3 +81,6 @@ class Vote(models.Model):
 
     def __unicode__(self):
         return u'Vote for %s' % self.choice
+
+    class Meta:
+        unique_together = ('user', 'poll', 'choice')
