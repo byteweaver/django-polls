@@ -18,7 +18,7 @@ class PollDetailView(DetailView):
         if self.request.user.is_anonymous():
             context['poll'].votable = False
         else:
-            context['poll'].votable = self.object.can_vote(self.request.user)
+            context['poll'].votable = self.object.already_voted(self.request.user)
         return context
 
 

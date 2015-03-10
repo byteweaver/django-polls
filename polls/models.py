@@ -23,7 +23,7 @@ class Poll(models.Model):
         current_time = timezone.now()
         if self.is_closed:
             raise PollClosed
-        if current_time < self.start_votes and current_time > self.end_votes:
+        if current_time < self.start_votes or current_time > self.end_votes:
             raise PollNotOpen
         if user is None and not self.is_anonymous:
             raise PollNotAnonymous
@@ -51,8 +51,11 @@ class Poll(models.Model):
             result += choice.count_votes()
         return result
 
-    def can_vote(self, user):
-        return not self.vote_set.filter(user=user).exists()
+    def already_voted(self, user):
+        if not user.is_anonymous():
+            return self.vote_set.filter(user=user).exists()
+        else:
+            return False
 
     def __unicode__(self):
         return self.question
