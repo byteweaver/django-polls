@@ -2,9 +2,10 @@ import logging
 import uuid
 from datetime import timedelta
 from django.contrib.auth.models import Permission, User
-from tastypie.test import ResourceTestCase
 from django.utils import timezone
 from tastypie.utils import make_naive
+from tastypie.test import ResourceTestCase
+from polls.models import Poll, Choice
 
 logger = logging.getLogger(__name__)
 URL = '/api/v1'  # or '/polls/api/v1' in the case when we don't set 'urls' attribute
@@ -39,12 +40,13 @@ class PollsApiTest(ResourceTestCase):
         poll_data = self.poll_data()
         resp = self.create_poll(poll_data)
         self.assertHttpCreated(resp)
+        pk = Poll.objects.order_by('-id')[0].pk
         resp = self.api_client.get(self.getURL('poll'), authentication=self.get_credentials())
         #logger.debug(resp)
         self.assertValidJSONResponse(resp)
         deserialized = self.deserialize(resp)['objects']
         self.assertEqual(deserialized[0], {
-            u'id': 1,
+            u'id': pk,
             u'choices': [],
             u'description': poll_data['description'],
             u'question': poll_data['question'],
@@ -69,28 +71,32 @@ class PollsApiTest(ResourceTestCase):
     def test_put_poll(self):
         poll_data = self.poll_data()
         poll_data['is_anonymous'] = True
-        self.create_poll(poll_data)
-        resp = self.api_client.put(self.getURL('poll', 1), data=poll_data, authentication=self.get_credentials())
+        resp = self.create_poll(poll_data)
+        self.assertHttpCreated(resp)
+        pk = Poll.objects.order_by('-id')[0].pk
+        resp = self.api_client.put(self.getURL('poll', pk), data=poll_data, authentication=self.get_credentials())
         self.assertHttpOK(resp)
-        resp = self.api_client.get(self.getURL('poll', 1), authentication=self.get_credentials())
+        resp = self.api_client.get(self.getURL('poll', pk), authentication=self.get_credentials())
         self.assertEqual(self.deserialize(resp)['is_anonymous'], True)
 
     def test_voting(self):
         # create a poll
         poll_data = self.poll_data()
         resp = self.create_poll(poll_data)
-        choice_data = self.choice_data(poll_id=1)
+        pk = Poll.objects.order_by('-id')[0].pk
+        choice_data = self.choice_data(poll_id=pk)
         # create 3 choices
         self.create_choices(choice_data, quantity=3)
-        resp = self.api_client.get(self.getURL('poll', 1), authentication=self.get_credentials())
+        resp = self.api_client.get(self.getURL('poll', pk), authentication=self.get_credentials())
         deserialized = self.deserialize(resp)
         self.assertEqual(len(deserialized['choices']), 3)
         # vote
-        vote_data = self.vote_data(poll_id=1, choices=[2])
+        choice_pk = Choice.objects.order_by('-id')[1].pk
+        vote_data = self.vote_data(poll_id=pk, choices=[choice_pk])
         resp = self.api_client.post(self.getURL('vote'), data=vote_data, format='json',
                              authentication=self.get_credentials())
         self.assertHttpCreated(resp)
-        resp = self.api_client.get(self.getURL('result', id=1), format='json',
+        resp = self.api_client.get(self.getURL('result', id=pk), format='json',
                             authentication=self.get_credentials())
         deserialized = self.deserialize(resp)
         self.assertEqual(deserialized['stats']['values'], [0.0, 1.0, 0.0])
@@ -99,7 +105,8 @@ class PollsApiTest(ResourceTestCase):
         poll_data = self.poll_data(anonymous=True)
         resp = self.create_poll(poll_data)
         self.assertHttpCreated(resp)
-        choice_data = self.choice_data(poll_id=1)
+        pk = Poll.objects.order_by('-id')[0].pk
+        choice_data = self.choice_data(poll_id=pk)
         self.create_choices(choice_data, quantity=3)
         vote_data = self.vote_data(poll_id=1, choices=[1])
         resp = self.api_client.post(self.getURL('vote'), data=vote_data, format='json')
@@ -131,8 +138,8 @@ class PollsApiTest(ResourceTestCase):
             'is_anonymous': anonymous,
             'is_multiple': multiple,
             'is_closed': closed,
-            'start_votes': start_votes.isoformat(),
-            'end_votes': end_votes.isoformat(),
+            'start_votes': unicode(start_votes.isoformat(), 'utf-8'),
+            'end_votes': unicode(end_votes.isoformat(), 'utf-8'),
         }
 
     def choice_data(self, poll_id):
@@ -145,6 +152,5 @@ class PollsApiTest(ResourceTestCase):
         return {
             'choice': choices,
             'poll': self.getURL('poll', id=poll_id)
-
         }
 
