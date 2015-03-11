@@ -32,7 +32,9 @@ class Migration(SchemaMigration):
         db.add_column(u'polls_poll', 'reference',
                       self.gf('django.db.models.fields.CharField')(default='', max_length=36, blank=True, unique=True),
                       keep_default=False)
-        db.create_unique(u'polls_poll', ['reference'])
+        # mysql error:
+        # Duplicate index 'polls_poll_reference_4cacbf22888a7509_uniq' defined on the table 'polls.polls_poll
+        #db.create_unique(u'polls_poll', ['reference'])
 
         # Adding field 'Poll.is_multiple'
         db.add_column(u'polls_poll', 'is_multiple',
@@ -70,7 +72,7 @@ class Migration(SchemaMigration):
 
         # Deleting field 'Poll.reference'
         db.delete_column(u'polls_poll', 'reference')
-        db.delete_unique(u'polls_poll', ['reference'])
+        #db.delete_unique(u'polls_poll', ['reference'])
 
         # Deleting field 'Poll.is_multiple'
         db.delete_column(u'polls_poll', 'is_multiple')

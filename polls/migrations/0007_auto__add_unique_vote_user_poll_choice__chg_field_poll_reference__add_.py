@@ -15,12 +15,14 @@ class Migration(SchemaMigration):
         # Changing field 'Poll.reference'
         db.alter_column(u'polls_poll', 'reference', self.gf('django.db.models.fields.CharField')(unique=True, max_length=36))
         # Adding unique constraint on 'Poll', fields ['reference']
-        db.create_unique(u'polls_poll', ['reference'])
+        # mysql error:
+        # Duplicate index 'polls_poll_reference_4cacbf22888a7509_uniq' defined on the table 'polls.polls_poll
+        # db.create_unique(u'polls_poll', ['reference'])
 
 
     def backwards(self, orm):
         # Removing unique constraint on 'Poll', fields ['reference']
-        db.delete_unique(u'polls_poll', ['reference'])
+        #db.delete_unique(u'polls_poll', ['reference'])
 
         # Removing unique constraint on 'Vote', fields ['user', 'poll', 'choice']
         db.delete_unique(u'polls_vote', ['user_id', 'poll_id', 'choice_id'])
