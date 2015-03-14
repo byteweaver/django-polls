@@ -1,11 +1,12 @@
-from uuid import uuid4
 from datetime import timedelta
-from django.db import models
-from django_extensions.db.fields.json import JSONField
+from exceptions import PollClosed, PollNotOpen, PollNotAnonymous, PollNotMultiple
+from uuid import uuid4
+
 from django.contrib.auth.models import User
+from django.db import models
 from django.utils import timezone
 from django.utils.translation import ugettext_lazy as _
-from exceptions import PollClosed, PollNotOpen, PollNotAnonymous, PollNotMultiple
+from django_extensions.db.fields.json import JSONField 
 
 
 class Poll(models.Model):

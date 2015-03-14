@@ -1,16 +1,3 @@
-from django.contrib.auth import get_user_model
-from django.core.urlresolvers import resolve
-from django.forms.models import model_to_dict
-from tastypie import fields
-from tastypie.authorization import Authorization, ReadOnlyAuthorization
-from tastypie.authentication import MultiAuthentication, BasicAuthentication, SessionAuthentication
-from tastypie.resources import ModelResource, ALL
-from tastypie.exceptions import ImmediateHttpResponse
-from tastypie import http
-from polls.models import Poll, Choice, Vote
-from exceptions import PollClosed, PollNotOpen, PollNotAnonymous, PollNotMultiple
-
-
 '''
     Api("v1/poll")
     POST /poll/ -- create a new poll, shall allow to post choices in the same API call
@@ -24,8 +11,23 @@ from exceptions import PollClosed, PollNotOpen, PollNotAnonymous, PollNotMultipl
         in poll.service.stats (later on, this will be externalized into a batch job).
 '''
 
+from exceptions import PollClosed, PollNotOpen, PollNotAnonymous, PollNotMultiple
 
-class UserResource(ModelResource):
+from django.conf.urls import url
+from django.contrib.auth import get_user_model
+from django.core.urlresolvers import resolve
+from django.forms.models import model_to_dict
+from tastypie import fields
+from tastypie import http
+from tastypie.authentication import MultiAuthentication, BasicAuthentication, SessionAuthentication
+from tastypie.authorization import Authorization, ReadOnlyAuthorization
+from tastypie.exceptions import ImmediateHttpResponse
+from tastypie.resources import ModelResource, ALL, NamespacedModelResource
+
+from polls.models import Poll, Choice, Vote
+
+
+class UserResource(NamespacedModelResource):
     def limit_list_by_user(self, request, object_list):
         """
         limit the request object list to its own profile, except
@@ -44,7 +46,7 @@ class UserResource(ModelResource):
         object_list = super(UserResource, self).get_object_list(request)
         object_list = self.limit_list_by_user(request, object_list)
         return object_list
-
+    
     class Meta:
         queryset = get_user_model().objects.all()
         allowed_methods = ['get']
@@ -58,12 +60,12 @@ class UserResource(ModelResource):
         }
 
 
-class PollResource(ModelResource):
+class PollResource(NamespacedModelResource):
     # POST, GET, PUT
     #user = fields.ForeignKey(UserResource, 'user')
     def obj_create(self, bundle, **kwargs):
         return super(PollResource, self).obj_create(bundle, user=bundle.request.user)
-
+    
     def dehydrate(self, bundle):
         choices = Choice.objects.filter(poll=bundle.data['id'])
         bundle.data['choices'] = [model_to_dict(choice) for choice in choices]
@@ -72,6 +74,15 @@ class PollResource(ModelResource):
     def alter_detail_data_to_serialize(self, request, data):
         data.data['already_voted'] = Poll.objects.get(pk=data.data.get('id')).already_voted(user=request.user)
         return data
+    
+    def prepend_urls(self):
+        """ match by pk or reference """ 
+        return [
+            url(r"^(?P<resource_name>%s)/(?P<pk>[0-9]+)/$" % self._meta.resource_name, 
+                self.wrap_view('dispatch_detail'), name="api_dispatch_detail"),
+            url(r"^(?P<resource_name>%s)/(?P<reference>[\w-]+)/$" % self._meta.resource_name, 
+                self.wrap_view('dispatch_detail'), name="api_dispatch_detail"),
+        ]
 
     class Meta:
         queryset = Poll.objects.all()
@@ -82,7 +93,7 @@ class PollResource(ModelResource):
         authorization = Authorization()
 
 
-class ChoiceResource(ModelResource):
+class ChoiceResource(NamespacedModelResource):
     poll = fields.ToOneField(PollResource, 'poll')
 
     class Meta:
@@ -120,9 +131,18 @@ class VoteResource(ModelResource):
         always_return_data = True
 
 
-class ResultResource(ModelResource):
+class ResultResource(NamespacedModelResource):
+    def prepend_urls(self):
+        """ match by pk or reference """ 
+        return [
+            url(r"^(?P<resource_name>%s)/(?P<pk>[0-9]+)/$" % self._meta.resource_name, 
+                self.wrap_view('dispatch_detail'), name="api_dispatch_detail"),
+            url(r"^(?P<resource_name>%s)/(?P<reference>[\w-]+)/$" % self._meta.resource_name, 
+                self.wrap_view('dispatch_detail'), name="api_dispatch_detail"),
+        ]
+    
     def dehydrate(self, bundle):
-        percentage = Poll.objects.get(pk=bundle.data['id']).count_percentage()
+        percentage = bundle.obj.count_percentage()
         labels = [choice.choice for choice in Choice.objects.filter(poll=bundle.data['id'])]
         bundle.data['stats'] = dict(values=percentage, labels=labels, votes=len(labels))
         return bundle
