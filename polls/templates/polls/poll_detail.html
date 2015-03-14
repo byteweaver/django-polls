@@ -1,12 +1,11 @@
 {% extends "base.html" %}
 
 {% load i18n %}
-{% load polls %}
 
 {% block content %}
 <h1>{{poll.question}}</h1>
 {% if poll.votable %}
-<form action="{% url polls:vote poll.id %}" method="post">
+<form action="{% url 'polls:vote' poll.id %}" method="post">
     {% csrf_token %}
     {% for choice in poll.choice_set.all %}
     <label class="radio"><input type="radio" name="choice_pk" value="{{choice.id}}"> {{choice.choice}}</label>

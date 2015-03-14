@@ -20,5 +20,7 @@ setup(
     include_package_data=True,
     install_requires=[
         'Django',
+        'django-extensions==1.3.11',
+        'django-tastypie==0.12.1',
     ],
 )
