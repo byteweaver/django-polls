@@ -62,7 +62,7 @@ class UserResource(NamespacedModelResource):
 
 class PollResource(NamespacedModelResource):
     # POST, GET, PUT
-    #user = fields.ForeignKey(UserResource, 'user')
+    # user = fields.ForeignKey(UserResource, 'user')
     def obj_create(self, bundle, **kwargs):
         return super(PollResource, self).obj_create(bundle, user=bundle.request.user)
     
@@ -78,15 +78,15 @@ class PollResource(NamespacedModelResource):
     def prepend_urls(self):
         """ match by pk or reference """ 
         return [
-            url(r"^(?P<resource_name>%s)/(?P<pk>[0-9]+)/$" % self._meta.resource_name, 
+            url(r"^(?P<resource_name>%s)/(?P<pk>[0-9]+)/$" % self._meta.resource_name,
                 self.wrap_view('dispatch_detail'), name="api_dispatch_detail"),
-            url(r"^(?P<resource_name>%s)/(?P<reference>[\w-]+)/$" % self._meta.resource_name, 
+            url(r"^(?P<resource_name>%s)/(?P<reference>[\w-]+)/$" % self._meta.resource_name,
                 self.wrap_view('dispatch_detail'), name="api_dispatch_detail"),
         ]
 
     class Meta:
         queryset = Poll.objects.all()
-        allowed_methods = ['get','post','put']
+        allowed_methods = ['get', 'post', 'put']
         resource_name = 'poll'
         always_return_data = True
         authentication = MultiAuthentication(BasicAuthentication(), SessionAuthentication())
@@ -98,35 +98,53 @@ class ChoiceResource(NamespacedModelResource):
 
     class Meta:
         queryset = Choice.objects.all()
-        allowed_methods = ['post','put']
+        allowed_methods = ['post', 'put']
         authentication = MultiAuthentication(BasicAuthentication(), SessionAuthentication())
         authorization = Authorization()
         resource_name = 'choice'
         always_return_data = True
 
 
-class VoteResource(ModelResource):
-    user = fields.ToOneField(UserResource, 'user')
-    choice = fields.ToOneField(ChoiceResource, 'choice')
-    poll = fields.ToOneField(PollResource, 'poll')
+class VoteResource(NamespacedModelResource):
+    user = fields.ToOneField(UserResource, 'user', blank=True, null=True, readonly=True)
+    choice = fields.ToOneField(ChoiceResource, 'choice', readonly=True)
+    poll = fields.ToOneField(PollResource, 'poll', readonly=True)
+    
+    def dispatch(self, *args, **kwargs):
+        request = args[1]
+        return super(VoteResource, self).dispatch(*args, **kwargs)
 
     def obj_create(self, bundle, **kwargs):
         poll = PollResource().get_via_uri(bundle.data.get('poll'))
         if not poll.already_voted(bundle.request.user):
             try:
-                poll.vote(choices=bundle.data.get('choice'), user=bundle.request.user)
-                raise ImmediateHttpResponse(response=http.HttpCreated())
+                votes = poll.vote(choices=bundle.data.get('choice'),
+                          data=bundle.data.get('data'),
+                          user=bundle.request.user)
             except (PollClosed, PollNotOpen, PollNotAnonymous, PollNotMultiple):
                 raise ImmediateHttpResponse(response=http.HttpForbidden('not allowed'))
+            else:
+                bundle.obj = votes[0]
         else:
             raise ImmediateHttpResponse(response=http.HttpForbidden('already voted'))
-
-
+        return bundle
+    
+    def obj_update(self, bundle, **kwargs):
+        poll = PollResource().get_via_uri(bundle.data.get('poll'))
+        # non anonymous votes by the same user can be modified
+        if not poll.is_anonymous and bundle.obj.user == bundle.request.user:
+            bundle.obj.change_vote(choices=bundle.data.get('choice'),
+                          data=bundle.data.get('data'),
+                          user=bundle.request.user)
+        else:
+            raise ImmediateHttpResponse(response=http.HttpForbidden('already voted'))
+            
+            
     class Meta:
         queryset = Vote.objects.all()
-        allowed_methods = ['post']
+        allowed_methods = ['post', 'put']
         authentication = MultiAuthentication(BasicAuthentication(), SessionAuthentication())
-        #authorization = Authorization()
+        # authorization = Authorization()
         resource_name = 'vote'
         always_return_data = True
 
@@ -135,16 +153,21 @@ class ResultResource(NamespacedModelResource):
     def prepend_urls(self):
         """ match by pk or reference """ 
         return [
-            url(r"^(?P<resource_name>%s)/(?P<pk>[0-9]+)/$" % self._meta.resource_name, 
+            url(r"^(?P<resource_name>%s)/(?P<pk>[0-9]+)/$" % self._meta.resource_name,
                 self.wrap_view('dispatch_detail'), name="api_dispatch_detail"),
-            url(r"^(?P<resource_name>%s)/(?P<reference>[\w-]+)/$" % self._meta.resource_name, 
+            url(r"^(?P<resource_name>%s)/(?P<reference>[\w-]+)/$" % self._meta.resource_name,
                 self.wrap_view('dispatch_detail'), name="api_dispatch_detail"),
         ]
     
     def dehydrate(self, bundle):
-        percentage = bundle.obj.count_percentage()
+        poll = bundle.obj
+        percentage = poll.count_percentage()
+        count = poll.count_total_votes()
+        # FIXME order of labels must be guaranteed to be the same as order stats
+        # since we have different db queries here, in Polls, Choices this is
+        # not guaranteed. solution: implement consistent Polls.get_stats()
         labels = [choice.choice for choice in Choice.objects.filter(poll=bundle.data['id'])]
-        bundle.data['stats'] = dict(values=percentage, labels=labels, votes=len(labels))
+        bundle.data['stats'] = dict(values=percentage, labels=labels, votes=count)
         return bundle
 
     class Meta:
