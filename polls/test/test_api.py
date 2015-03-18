@@ -1,11 +1,15 @@
+from datetime import timedelta
+import json
 import logging
 import uuid
-from datetime import timedelta
+
 from django.contrib.auth.models import Permission, User
 from django.utils import timezone
-from tastypie.utils import make_naive
 from tastypie.test import ResourceTestCase
+from tastypie.utils import make_naive
+
 from polls.models import Poll, Choice
+
 
 logger = logging.getLogger(__name__)
 URL = '/api/v1'  # or '/polls/api/v1' in the case when we don't set 'urls' attribute
@@ -99,7 +103,11 @@ class PollsApiTest(ResourceTestCase):
         resp = self.api_client.get(self.getURL('result', id=pk), format='json',
                             authentication=self.get_credentials())
         deserialized = self.deserialize(resp)
-        self.assertEqual(deserialized['stats']['values'], [0.0, 1.0, 0.0])
+        self.assertDictEqual(deserialized['stats'], 
+                         {u'labels': [u'choice0', u'choice1', u'choice2'], 
+                          u'votes': 1, 
+                          u'codes': [u'choice0', u'choice1', u'choice2'], 
+                          u'values': [0.0, 1.0, 0.0]})
 
     def test_anonymous_voting(self):
         poll_data = self.poll_data(anonymous=True)
@@ -111,7 +119,54 @@ class PollsApiTest(ResourceTestCase):
         vote_data = self.vote_data(poll_id=1, choices=[1])
         resp = self.api_client.post(self.getURL('vote'), data=vote_data, format='json')
         self.assertHttpCreated(resp)
-
+        
+    def test_voting_with_data(self):
+        poll_data = self.poll_data(anonymous=True)
+        resp = self.create_poll(poll_data)
+        self.assertHttpCreated(resp)
+        pk = Poll.objects.order_by('-id')[0].pk
+        choice_data = self.choice_data(poll_id=pk)
+        self.create_choices(choice_data, quantity=3)
+        vote_data = self.vote_data(poll_id=1, choices=[1])
+        vote_data['data'] = {
+            'foo' : 'bar'
+        }
+        resp = self.api_client.post(self.getURL('vote'), data=vote_data, format='json')
+        self.assertHttpCreated(resp)
+        rdata = json.loads(self.deserialize(resp)['data'])
+        self.assertDictEqual(rdata, vote_data['data'])
+        
+    def test_voting_no_choice(self):
+        poll_data = self.poll_data(anonymous=True)
+        resp = self.create_poll(poll_data)
+        self.assertHttpCreated(resp)
+        pk = Poll.objects.order_by('-id')[0].pk
+        choice_data = self.choice_data(poll_id=pk)
+        self.create_choices(choice_data, quantity=3)
+        vote_data = self.vote_data(poll_id=1, choices=[1])
+        del vote_data['choice']
+        resp = self.api_client.post(self.getURL('vote'), data=vote_data, format='json')
+        self.assertHttpBadRequest(resp)
+        vote_data['choice'] = None
+        resp = self.api_client.post(self.getURL('vote'), data=vote_data, format='json')
+        self.assertHttpBadRequest(resp)
+        
+    def test_voting_by_code(self):
+        poll_data = self.poll_data(anonymous=True)
+        resp = self.create_poll(poll_data)
+        self.assertHttpCreated(resp)
+        pk = Poll.objects.order_by('-id')[0].pk
+        choice_data = self.choice_data(poll_id=pk)
+        self.create_choices(choice_data, quantity=3)
+        vote_data = self.vote_data(poll_id=1, choices=[1])
+        # invalid choice
+        vote_data['choice'] = ['xchoice']
+        resp = self.api_client.post(self.getURL('vote'), data=vote_data, format='json')
+        self.assertHttpBadRequest(resp)
+        vote_data['choice'] = ['choice1']
+        resp = self.api_client.post(self.getURL('vote'), data=vote_data, format='json')
+        self.assertHttpCreated(resp)
+        
     def create_poll(self, poll_data):
         return self.api_client.post(self.getURL('poll'), format='json',
                                     data=poll_data, authentication=self.get_credentials())
@@ -126,7 +181,7 @@ class PollsApiTest(ResourceTestCase):
             resp = self.api_client.post(self.getURL('choice'), format='json',
                                  data=choice_data, authentication=self.get_credentials())
             self.assertHttpCreated(resp)
-
+            
     def poll_data(self, anonymous=False, multiple=False, closed=False):
         now = timezone.now()
         # delete microseconds

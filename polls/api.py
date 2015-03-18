@@ -12,6 +12,7 @@
 '''
 
 from exceptions import PollClosed, PollNotOpen, PollNotAnonymous, PollNotMultiple
+import json
 
 from django.conf.urls import url
 from django.contrib.auth import get_user_model
@@ -19,11 +20,13 @@ from django.core.urlresolvers import resolve
 from django.forms.models import model_to_dict
 from tastypie import fields
 from tastypie import http
-from tastypie.authentication import MultiAuthentication, BasicAuthentication, SessionAuthentication
+from tastypie.authentication import MultiAuthentication, BasicAuthentication, SessionAuthentication, \
+    Authentication
 from tastypie.authorization import Authorization, ReadOnlyAuthorization
 from tastypie.exceptions import ImmediateHttpResponse
 from tastypie.resources import ModelResource, ALL, NamespacedModelResource
 
+from polls.exceptions import PollInvalidChoice
 from polls.models import Poll, Choice, Vote
 
 
@@ -110,10 +113,6 @@ class VoteResource(NamespacedModelResource):
     choice = fields.ToOneField(ChoiceResource, 'choice', readonly=True)
     poll = fields.ToOneField(PollResource, 'poll', readonly=True)
     
-    def dispatch(self, *args, **kwargs):
-        request = args[1]
-        return super(VoteResource, self).dispatch(*args, **kwargs)
-
     def obj_create(self, bundle, **kwargs):
         poll = PollResource().get_via_uri(bundle.data.get('poll'))
         if not poll.already_voted(bundle.request.user):
@@ -123,6 +122,8 @@ class VoteResource(NamespacedModelResource):
                           user=bundle.request.user)
             except (PollClosed, PollNotOpen, PollNotAnonymous, PollNotMultiple):
                 raise ImmediateHttpResponse(response=http.HttpForbidden('not allowed'))
+            except PollInvalidChoice:
+                raise ImmediateHttpResponse(response=http.HttpBadRequest('invalid data'))
             else:
                 bundle.obj = votes[0]
         else:
@@ -138,12 +139,20 @@ class VoteResource(NamespacedModelResource):
                           user=bundle.request.user)
         else:
             raise ImmediateHttpResponse(response=http.HttpForbidden('already voted'))
-            
+
+    def dehydrate(self, bundle):
+        # convert JSON Field
+        bundle = super(VoteResource, self).dehydrate(bundle)
+        bundle.data['data'] = json.dumps(bundle.obj.data)
+        return bundle
             
     class Meta:
         queryset = Vote.objects.all()
         allowed_methods = ['post', 'put']
-        authentication = MultiAuthentication(BasicAuthentication(), SessionAuthentication())
+        # by default require authentication but regress for anonymous votes    
+        authentication = MultiAuthentication(BasicAuthentication(), 
+                                             SessionAuthentication(),
+                                             Authentication())
         # authorization = Authorization()
         resource_name = 'vote'
         always_return_data = True
@@ -161,13 +170,7 @@ class ResultResource(NamespacedModelResource):
     
     def dehydrate(self, bundle):
         poll = bundle.obj
-        percentage = poll.count_percentage()
-        count = poll.count_total_votes()
-        # FIXME order of labels must be guaranteed to be the same as order stats
-        # since we have different db queries here, in Polls, Choices this is
-        # not guaranteed. solution: implement consistent Polls.get_stats()
-        labels = [choice.choice for choice in Choice.objects.filter(poll=bundle.data['id'])]
-        bundle.data['stats'] = dict(values=percentage, labels=labels, votes=count)
+        bundle.data['stats'] = poll.get_stats()
         return bundle
 
     class Meta:
