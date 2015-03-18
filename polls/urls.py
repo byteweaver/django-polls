@@ -13,8 +13,8 @@ v1_api.register(VoteResource())
 v1_api.register(ResultResource())
 
 urlpatterns = patterns('',
-    #url(r'^$', PollListView.as_view(), name='list'),
+    url(r'^$', PollListView.as_view(), name='list'),
     url(r'^api/', include(v1_api.urls)),
-    #url(r'^(?P<pk>\d+)/$', PollDetailView.as_view(), name='detail'),
-    #url(r'^(?P<pk>\d+)/vote/$', login_required(PollVoteView.as_view()), name='vote'),
+    url(r'^(?P<pk>\d+)/$', PollDetailView.as_view(), name='detail'),
+    url(r'^(?P<pk>\d+)/vote/$', login_required(PollVoteView.as_view()), name='vote'),
 )

@@ -11,7 +11,7 @@ from django.contrib.auth import get_user
 from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse
 from polls.models import Poll, Choice, Vote
-from polls.exceptions import PollClosed, PollNotOpen, PollNotAnonymous, PollNotMultiple
+from polls.exceptions import PollNotAnonymous, PollNotMultiple
 
 logger = logging.getLogger(__name__)
 
@@ -97,19 +97,24 @@ class PollsModelTest(TestCase):
         poll, cids = create_poll_single()
         poll.vote([cids[0]], self.user1)
         poll.vote([cids[1]], self.user2)
-        self.assertEqual(poll.count_percentage(), [0.5, 0.5, 0])
+        self.assertDictEqual(poll.count_percentage(True), 
+                             {u'i-am-fine': 0.5, u'so-so': 0.5, u'bad': 0.0})
 
     def test_single_vote_stat_2(self):
         poll, cids = create_poll_single()
         poll.vote([cids[0]], self.user1)
-        self.assertEqual(poll.count_percentage(), [1.0, 0, 0])
+        self.assertDictEqual(poll.count_percentage(True), 
+                         {u'i-am-fine': 1.0, u'so-so': 0.0, u'bad': 0.0})
 
     def test_single_vote_stat_3(self):
         poll, cids = create_poll_single()
         poll.vote([cids[0]], self.user1)
         poll.vote([cids[1]], self.user2)
         poll.vote([cids[2]], self.user3)
-        self.assertEqual(poll.count_percentage(), [1.0/3, 1.0/3, 1.0/3])
+        self.assertEqual(poll.count_percentage(True), 
+                         {u'i-am-fine': 0.3333333333333333, 
+                          u'so-so': 0.3333333333333333, 
+                          u'bad': 0.3333333333333333})
 
     def test_multiple_vote(self):
         poll, cids = create_poll_multiple()
@@ -119,9 +124,13 @@ class PollsModelTest(TestCase):
     def test_multiple_vote_stat(self):
         poll, cids = create_poll_multiple()
         poll.vote([cids[0],cids[1]], self.user1)
-        self.assertEqual(poll.count_percentage(), [0.5, 0.5, 0.0, 0.0, 0.0])
+        self.assertDictEqual(poll.count_percentage(True), 
+                         {u'german': 0.0, u'japanese': 0.0, u'french': 0.5, 
+                          u'chinese': 0.0, u'english': 0.5})
         poll.vote([cids[2],cids[3],cids[4]], self.user2)
-        self.assertEqual(poll.count_percentage(), [0.2, 0.2, 0.2, 0.2, 0.2])
+        self.assertDictEqual(poll.count_percentage(True),
+                         {u'german': 0.2, u'japanese': 0.2, 
+                          u'french': 0.2, u'chinese': 0.2, u'english': 0.2})
 
     def test_anonymous_single_vote(self):
         poll, cids = create_poll_anonymous_single()
@@ -133,10 +142,14 @@ class PollsModelTest(TestCase):
     def test_anonymous_single_vote_stat(self):
         poll, cids = create_poll_anonymous_single()
         poll.vote([cids[0]])
-        self.assertEqual(poll.count_percentage(), [1.0, 0, 0])
+        self.assertDictEqual(poll.count_percentage(True),
+                              {u'yes': 1.0, u'nobody-knows': 0.0, u'no': 0.0})
         poll.vote([cids[1]], self.user1)
         poll.vote([cids[2]], self.user2)
-        self.assertEqual(poll.count_percentage(), [1.0/3, 1.0/3, 1.0/3])
+        self.assertDictEqual(poll.count_percentage(True), 
+                          {u'yes': 0.3333333333333333, 
+                           u'nobody-knows': 0.3333333333333333, 
+                           u'no': 0.3333333333333333})
 
     def test_anonymous_multiple_vote(self):
         poll, cids = create_poll_anonymous_multiple()
@@ -148,7 +161,9 @@ class PollsModelTest(TestCase):
     def test_anonymous_multiple_vote_stat(self):
         poll, cids = create_poll_anonymous_multiple()
         poll.vote([cids[1]])
-        self.assertEqual(poll.count_percentage(), [0.0, 1.0, 0.0, 0.0, 0.0])
+        self.assertDictEqual(poll.count_percentage(True), 
+                         {u'vegetables': 0.0, u'fruits': 0.0, 
+                          u'milk': 1.0, u'meat': 0.0, u'chocolate': 0.0})
 
 # for authenticated users, only one vote allowed
 def create_poll_single():
