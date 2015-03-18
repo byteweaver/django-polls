@@ -19,7 +19,7 @@ setup(
     packages=find_packages(),
     include_package_data=True,
     install_requires=[
-        'Django',
+        'Django>=1.6',
         'django-extensions==1.3.11',
         'django-tastypie==0.12.1',
     ],
