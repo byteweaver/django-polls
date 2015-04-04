@@ -3,6 +3,11 @@ django-polls
 
 A simple and reusable polls application for django.
 
+## Key features
+
+* basic poll handling (poll, choices, votes)
+* easy to extend
+
 ## Installation
 
 If you want to install the latest stable release from PyPi:
