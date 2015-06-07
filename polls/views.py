@@ -3,7 +3,7 @@ from django.core.urlresolvers import reverse_lazy
 from django.contrib import messages
 from django.utils.translation import ugettext_lazy as _
 
-from models import Choice, Poll, Vote
+from polls.models import Choice, Poll, Vote
 
 
 class PollListView(ListView):
