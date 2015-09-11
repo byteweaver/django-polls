@@ -4,3 +4,6 @@
 local_settings.py
 /dist/
 /django_polls.egg-info/
+
+# testing
+/.tox/
