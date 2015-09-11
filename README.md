@@ -1,5 +1,6 @@
-django-polls
-============
+# django-polls
+
+![Build status](https://travis-ci.org/byteweaver/django-polls.svg?branch=master)
 
 A simple and reusable polls application for django.
 
