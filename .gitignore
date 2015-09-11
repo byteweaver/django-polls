@@ -5,5 +5,9 @@ local_settings.py
 /dist/
 /django_polls.egg-info/
 
+# vim
+*.swp
+*.swo
+
 # testing
 /.tox/
