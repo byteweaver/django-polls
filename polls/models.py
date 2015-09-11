@@ -1,7 +1,9 @@
-from django.db import models
 from django.contrib.auth.models import User
+from django.db import models
+from django.utils.encoding import python_2_unicode_compatible
 
 
+@python_2_unicode_compatible
 class Poll(models.Model):
     question = models.CharField(max_length=255)
     description = models.TextField(blank=True)
@@ -18,7 +20,7 @@ class Poll(models.Model):
     def can_vote(self, user):
         return not self.vote_set.filter(user=user).exists()
 
-    def __unicode__(self):
+    def __str__(self):
         return self.question
 
 
